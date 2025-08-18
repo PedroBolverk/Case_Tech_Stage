@@ -4,10 +4,14 @@ import { AppService } from './app.service';
 import { AreasModule } from './areas/areas.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProcessesModule } from './processes/processes.module';
+import { DocumentsModule } from './documents/documents.module';
+import { StructuresModule } from './structures/structures.module';
+import { PeopleModule } from './people/people.module';
+import { ToolsModule } from './tools/tools.module';
 
 
 @Module({
-  imports: [AreasModule, PrismaModule, ProcessesModule],
+  imports: [AreasModule, PrismaModule, ProcessesModule, DocumentsModule, StructuresModule, PeopleModule, ToolsModule],
   controllers: [AppController],
   providers: [AppService],
 })

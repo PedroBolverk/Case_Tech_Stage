@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Area {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  processes   Process[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Person {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  role      String?
+  processes Process[]
+}
+
+model Tool {
+  id     String          @id @default(cuid())
+  name   String
+  type   ToolType
+  url    String?
+  usedIn ToolOnProcess[]
+}
+
+model Process {
+  id            String        @id @default(cuid())
+  areaId        String
+  area          Area          @relation(fields: [areaId], references: [id])
+  parentId      String?
+  parent        Process?      @relation("ProcessHierarchy", fields: [parentId], references: [id])
+  children      Process[]     @relation("ProcessHierarchy")
+  title         String
+  description   String?
+  status        ProcessStatus @default(PLANNED)
+  importance    Int           @default(0)
+  responsibleId String?
+  responsible   Person?       @relation(fields: [responsibleId], references: [id])
+  tools         ToolOnProcess[]
+  documents     Document[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model ToolOnProcess {
+  processId String
+  toolId    String
+  notes     String?
+  process   Process @relation(fields: [processId], references: [id])
+  tool      Tool    @relation(fields: [toolId], references: [id])
+
+  @@id([processId, toolId])
+}
+
+model Document {
+  id        String  @id @default(cuid())
+  processId String
+  title     String
+  url       String
+  process   Process @relation(fields: [processId], references: [id])
+}
+
+enum ToolType {
+  SYSTEMIC
+  MANUAL
+}
+
+enum ProcessStatus {
+  PLANNED
+  ACTIVE
+  BLOCKED
+  DONE
+}

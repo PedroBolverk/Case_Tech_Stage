@@ -1,0 +1,6 @@
+/* styles/FlowDiagram.module.css */
+.flowContainer {
+  height: 500px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}

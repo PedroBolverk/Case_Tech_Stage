@@ -3,17 +3,18 @@ import { ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ProcessesService } from './processes.service';
 import { CreateProcessDto } from './dto/create-process.dto';
 import { UpdateProcessDto } from './dto/update-process.dto';
+import { CreateSubprocessDto } from './dto/create-subprocess.dto';  // Importar DTO de subprocesso
 import { AttachToolDto } from './dto/attach-tool.dto';
-import { AttachExistingDocumentDto } from './dto/attach-existing-document.dto';
+import { AttachExistingDocumentDto } from './dto/attach-existing-document.dto';  // Importar DTO de documento
 import { MoveDocumentDto } from './dto/move-document.dto';
 
-
 @ApiTags('processes')
-@Controller('processes')
+@Controller('api/processes')
 export class ProcessesController {
-  constructor(private readonly service: ProcessesService) {}
+  constructor(private readonly service: ProcessesService) { }
 
   // ----- CRUD -----
+
   @Get()
   @ApiQuery({ name: 'areaId', required: false })
   list(@Query('areaId') areaId?: string) {
@@ -21,10 +22,42 @@ export class ProcessesController {
   }
 
   @Get(':id')
-  @ApiQuery({ name: 'includeTree', required: false, description: 'true/false' })
-  get(@Param('id') id: string, @Query('includeTree') includeTree?: string) {
-    const tree = (includeTree ?? '').toLowerCase() === 'true';
-    return tree ? this.service.getTree(id) : this.service.findOne(id);
+  @ApiQuery({ name: 'includeSubprocesses', required: false, description: 'true/false' })
+  get(@Param('id') id: string, @Query('includeSubprocesses') includeSubprocesses?: string) {
+    const includeSubprocess = (includeSubprocesses ?? '').toLowerCase() === 'true';
+    return includeSubprocess
+      ? this.service.getSubprocessesByProcessId(id)
+      : this.service.findOne(id);
+  }
+
+  // Rota para criar subprocesso
+  @Post(':processId/subprocesses')
+  createSubprocess(
+    @Param('processId') processId: string,
+    @Body() createSubprocessDto: CreateSubprocessDto
+  ) {
+    return this.service.createSubprocess(processId, createSubprocessDto);
+  }
+
+  // Rota para pegar todos os subprocessos
+  @Get('/subprocesses')
+  getAllSubprocesses() {
+    return this.service.getAllSubprocesses();
+  }
+
+  // Rota para pegar subprocessos de um processo específico
+  @Get(':processId/subprocesses')
+  async getSubprocesses(@Param('processId') processId: string) {
+    return this.service.getSubprocessesByProcessId(processId);
+  }
+
+  // Criar Processo dentro de uma Área
+  @Post(':areaId/processes')
+  createProcess(
+    @Param('areaId') areaId: string,
+    @Body() createProcessDto: CreateProcessDto
+  ) {
+    return this.service.createProcess(areaId, createProcessDto);
   }
 
   @Post()
@@ -45,7 +78,7 @@ export class ProcessesController {
       : this.service.remove(id);
   }
 
-  // ----- VÍNCULOS: TOOLS -----
+  // ----- Vínculos: TOOLS -----
   @Post(':id/tools')
   attachTool(@Param('id') id: string, @Body() dto: AttachToolDto) {
     return this.service.attachTool(id, dto.toolId, dto.notes ?? null);
@@ -56,7 +89,7 @@ export class ProcessesController {
     return this.service.detachTool(id, toolId);
   }
 
-  // ----- VÍNCULOS: DOCUMENTS EXISTENTES -----
+  // ----- Vínculos: DOCUMENTS EXISTENTES -----
   @Post(':id/documents')
   attachExistingDocument(@Param('id') id: string, @Body() dto: AttachExistingDocumentDto) {
     return this.service.attachExistingDocument(id, dto.documentId);

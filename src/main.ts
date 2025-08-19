@@ -7,7 +7,11 @@ import { GlobalExceptionFilter } from './common/filters/prisma-exception.filter'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.enableCors();
+  app.enableCors({
+    origin: '*', // Permite apenas o front-end do Next.js
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Permite os métodos que você precisa
+    allowedHeaders: ['Content-Type', 'Authorization'], // Permite cabeçalhos específicos
+  });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }));
   app.useGlobalFilters(new GlobalExceptionFilter());
 

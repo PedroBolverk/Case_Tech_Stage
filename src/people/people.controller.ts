@@ -7,7 +7,7 @@ import { IdParamDto } from 'src/common/dto/id-param.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 
 @ApiTags('people')
-@Controller('people')
+@Controller('api/people')
 export class PeopleController {
   constructor(private readonly service: PeopleService) {}
 

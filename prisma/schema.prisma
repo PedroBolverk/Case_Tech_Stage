@@ -11,7 +11,7 @@ model Area {
   id          String    @id @default(cuid())
   name        String
   description String?
-  processes   Process[]
+  processes   Process[] // Uma área pode ter muitos processos
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
@@ -28,7 +28,7 @@ model Person {
   email     String?   @unique
   password  String?
   role      Role      @default(USER)
-  processes Process[]
+  processes Process[] // Uma pessoa pode ser responsável por muitos processos
 }
 
 model Tool {
@@ -36,24 +36,22 @@ model Tool {
   name   String
   type   ToolType
   url    String?
-  usedIn ToolOnProcess[]
+  usedIn ToolOnProcess[] // Ferramentas associadas aos processos
 }
 
 model Process {
   id            String          @id @default(cuid())
   areaId        String
   area          Area            @relation(fields: [areaId], references: [id])
-  parentId      String?
-  parent        Process?        @relation("ProcessHierarchy", fields: [parentId], references: [id])
-  children      Process[]       @relation("ProcessHierarchy")
   title         String
   description   String?
   status        ProcessStatus   @default(PLANNED)
   importance    Int             @default(0)
-  responsibleId String?
+  responsibleId String?         // Responsável pelo processo
   responsible   Person?         @relation(fields: [responsibleId], references: [id])
-  tools         ToolOnProcess[]
-  documents     Document[]
+  tools         ToolOnProcess[] // Ferramentas associadas ao processo
+  documents     Document[]      // Documentos associados ao processo
+  subprocesses  Subprocess[]    // Subprocessos associados a esse processo
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 }
@@ -65,7 +63,7 @@ model ToolOnProcess {
   process   Process @relation(fields: [processId], references: [id])
   tool      Tool    @relation(fields: [toolId], references: [id])
 
-  @@id([processId, toolId])
+  @@id([processId, toolId]) // Chave composta entre processo e ferramenta
 }
 
 model Document {
@@ -73,7 +71,17 @@ model Document {
   processId String
   title     String
   url       String
-  process   Process @relation(fields: [processId], references: [id])
+  process   Process @relation(fields: [processId], references: [id]) // Relaciona com o processo
+}
+
+model Subprocess {
+  id          String      @id @default(cuid())
+  title       String
+  status      ProcessStatus
+  processId   String      // Chave estrangeira referindo o processo pai
+  process     Process     @relation(fields: [processId], references: [id])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }
 
 enum ToolType {

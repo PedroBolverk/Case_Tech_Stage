@@ -4,7 +4,7 @@ import { AreasService } from './areas.service';
 import { CreateAreaDto } from './dto/create-area.dto';
 
 @ApiTags('areas')
-@Controller('areas')
+@Controller('api/areas')
 export class AreasController {
   constructor(private readonly service: AreasService) {}
 

@@ -7,39 +7,37 @@ import { ToolType, ProcessStatus } from '@prisma/client';
 @ApiTags('structures')
 @Controller('structures')
 export class StructuresController {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
-  @Get('export')
-  async exportAll() {
-    const areas = await this.prisma.area.findMany({
-      include: {
-        processes: {
-          where: { parentId: null },
-          include: {
-            responsible: true,            // was: owner
-            documents: true,
-            tools: { include: { tool: true } },
-            children: {
-              include: {
-                responsible: true,
-                documents: true,
-                tools: { include: { tool: true } },
-                children: {
-                  include: {
-                    responsible: true,
-                    documents: true,
-                    tools: { include: { tool: true } },
-                  },
+@Get('export')
+async exportAll() {
+  const areas = await this.prisma.area.findMany({
+    include: {
+      processes: {
+        // Buscando todos os processos relacionados a cada área
+        include: {
+          responsible: true,  // Responsável pelo processo principal
+          documents: true,    // Documentos do processo principal
+          tools: { include: { tool: true } },  // Ferramentas associadas ao processo
+          subprocesses: {   // Subprocessos diretamente
+            include: {
+              process: {  // Relacionamento com o processo pai
+                include: {
+                  responsible: true,  // Responsável pelo processo pai
+                  documents: true,  // Documentos do processo pai
+                  tools: { include: { tool: true } }, // Ferramentas associadas ao processo pai
                 },
               },
             },
           },
         },
       },
-    });
+    },
+  });
 
-    return { version: 1, exportedAt: new Date().toISOString(), areas };
-  }
+  return { version: 1, exportedAt: new Date().toISOString(), areas };
+}
+
 
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
@@ -72,7 +70,6 @@ export class StructuresController {
 
         // Pessoa responsável (email pode ser opcional)
         if (p.responsible?.email || p.responsible?.name) {
-          // Person.email pode ser opcional no seu schema (String?), então fazemos findFirst por email, senão por name
           let person = p.responsible.email
             ? await this.prisma.person.findFirst({ where: { email: p.responsible.email } })
             : null;
@@ -93,7 +90,7 @@ export class StructuresController {
             person = await this.prisma.person.create({
               data: {
                 name: p.responsible.name ?? 'Responsável',
-                email: p.responsible.email ?? undefined, // se seu schema agora aceita String?
+                email: p.responsible.email ?? undefined,
                 role: p.responsible.role ?? undefined,
               },
             });
@@ -105,22 +102,21 @@ export class StructuresController {
         // Criar processo (usa title/status/importance/responsibleId)
         const proc = await this.prisma.process.create({
           data: {
-            title: p.title ?? p.name ?? 'Processo', // compat: caso JSON venha com name
+            title: p.title ?? p.name ?? 'Processo',
             status: (p.status as ProcessStatus) ?? ProcessStatus.PLANNED,
             importance: typeof p.importance === 'number' ? p.importance : 3,
             areaId: area.id,
-            parentId,
             responsibleId,
           },
         });
 
-        // Tools (name não é unique -> findFirst + create)
+        // Ferramentas
         if (Array.isArray(p.tools)) {
           for (const t of p.tools) {
             const type: ToolType =
               t.type && Object.values(ToolType).includes(t.type)
                 ? t.type
-                : (t.systemic ? ToolType.SYSTEMIC : ToolType.MANUAL); // compat com payload antigo
+                : (t.systemic ? ToolType.SYSTEMIC : ToolType.MANUAL);
 
             let tool = await this.prisma.tool.findFirst({ where: { name: t.name } });
             if (tool) {
@@ -140,29 +136,29 @@ export class StructuresController {
           }
         }
 
-        // Documents (precisa de processId; não existe 'type' no modelo)
+        // Documentos
         if (Array.isArray(p.documents)) {
           for (const d of p.documents) {
             await this.prisma.document.create({
               data: {
                 title: d.title,
-                url: d.url ?? '', // url é String obrigatória no schema
+                url: d.url ?? '', // url obrigatória
                 processId: proc.id,
               },
             });
           }
         }
 
-        // Filhos
-        if (Array.isArray(p.children)) {
-          for (const child of p.children) {
-            await upsertProcess(child, proc.id);
+        // Subprocessos (agora sem usar parentId)
+        if (Array.isArray(p.subprocesses)) {
+          for (const child of p.subprocesses) {
+            await upsertProcess(child, proc.id); // Relacionando subprocessos ao processo
           }
         }
       };
 
       for (const root of a.processes ?? []) {
-        await upsertProcess(root, null);
+        await upsertProcess(root, null); // Processos principais sem parentId
         imported++;
       }
     }

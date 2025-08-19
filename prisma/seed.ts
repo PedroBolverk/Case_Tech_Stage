@@ -1,50 +1,62 @@
-import { PrismaClient, ToolType, ProcessStatus } from '@prisma/client';
+import { PrismaClient, ToolType, ProcessStatus, Role } from '@prisma/client';
+import * as bcrypt from 'bcrypt'; // Para criptografar senhas
 const prisma = new PrismaClient();
 
-// Person: email é opcional no schema se você mudou p/ String?
+// Função para garantir que a pessoa seja criada ou retornada caso já exista
 async function getOrCreatePerson(
   where: { email?: string; name?: string },
-  data: { name: string; email?: string; role?: string }
+  data: { name: string; email?: string; role: Role; password: string } // Garantindo que a senha seja passada
 ) {
   const found = await prisma.person.findFirst({ where });
-  return found ?? prisma.person.create({ data });
+  if (found) return found;
+
+  // Criptografando a senha antes de salvar no banco
+  const hashedPassword = await bcrypt.hash(data.password, 10);
+
+  // Criação de pessoa com senha criptografada
+  return prisma.person.create({
+    data: {
+      ...data,
+      password: hashedPassword, // Salvando a senha criptografada
+    },
+  });
 }
 
-// Tool: usa enum ToolType (SYSTEMIC | MANUAL) em vez de boolean "systemic"
+// Função para garantir que a ferramenta seja criada ou retornada caso já exista
 async function getOrCreateTool(name: string, type: ToolType = ToolType.SYSTEMIC, url?: string) {
   const found = await prisma.tool.findFirst({ where: { name } });
   return found ?? prisma.tool.create({ data: { name, type, url } });
 }
 
-// Area: ok
+// Função para garantir que a área seja criada ou retornada caso já exista
 async function getOrCreateArea(name: string, description?: string) {
   const found = await prisma.area.findFirst({ where: { name } });
   return found ?? prisma.area.create({ data: { name, description } });
 }
 
 async function main() {
-  // Pessoa responsável
+  // Adicionando uma pessoa responsável
   const ana = await getOrCreatePerson(
     { email: 'ana@empresa.com' },
-    { name: 'Ana Lima', email: 'ana@empresa.com', role: 'HR Lead' }
+    { name: 'Ana Lima', email: 'ana@empresa.com', role: Role.USER, password: 'senha123' }
   );
 
   // Ferramentas
-  const drive    = await getOrCreateTool('Google Drive', ToolType.SYSTEMIC, 'https://drive.google.com');
+  const drive = await getOrCreateTool('Google Drive', ToolType.SYSTEMIC, 'https://drive.google.com');
   const planilha = await getOrCreateTool('Planilha Avaliação', ToolType.MANUAL);
 
   // Área
   const area = await getOrCreateArea('Pessoas', 'Gestão de pessoas');
 
-  // Processo raiz (usa title/responsibleId conforme schema)
+  // Processo raiz (usando title/responsibleId conforme o schema)
   const recrutamento = await prisma.process.create({
     data: {
       title: 'Recrutamento',
       status: ProcessStatus.ACTIVE,
       importance: 4,
       areaId: area.id,
-      responsibleId: ana.id,
-      // Document é filho de Process via processId obrigatório -> crie aqui dentro
+      responsibleId: ana.id, // A pessoa 'Ana' será responsável por este processo
+      // Documentos vinculados ao processo
       documents: {
         create: [
           { title: 'Guia de Entrevista', url: 'https://docs/guia.pdf' },
@@ -57,12 +69,12 @@ async function main() {
   await prisma.toolOnProcess.create({ data: { processId: recrutamento.id, toolId: drive.id } });
   await prisma.toolOnProcess.create({ data: { processId: recrutamento.id, toolId: planilha.id } });
 
-  console.log('Seed ok! Área Pessoas + processo Recrutamento criados/vinculados.');
+  console.log('Seed executado com sucesso! Área Pessoas + processo Recrutamento criados/vinculados.');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('Erro ao executar o seed:', e);
     process.exit(1);
   })
   .finally(async () => {

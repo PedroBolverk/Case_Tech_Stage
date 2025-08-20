@@ -15,6 +15,6 @@
     "jsx": "preserve",
     "incremental": true
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "src/modal/Processos.jsx", "src/modal/Processos.jsx", "src/modal/Processos.jsx", "src/modal/Processos.jsx"],
   "exclude": ["node_modules"]
 }

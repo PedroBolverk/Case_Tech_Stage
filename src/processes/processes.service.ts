@@ -2,10 +2,12 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProcessDto } from './dto/create-process.dto';
 import { CreateSubprocessDto } from './dto/create-subprocess.dto';  // Importar DTO de subprocesso
+import { AttachExistingDocumentDto } from './dto/attach-existing-document.dto';
+import { AttachToolDto } from './dto/attach-tool.dto';
 
 @Injectable()
 export class ProcessesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   // --------- CRUD básico ---------
 
@@ -21,8 +23,14 @@ export class ProcessesService {
     });
   }
 
-  create(dto: CreateProcessDto) {
-    return this.prisma.process.create({ data: { ...dto } });
+  create(areaId: string, dto: CreateProcessDto) {
+    return this.prisma.process.create({
+      data: {
+        ...dto,
+        areaId: areaId,  // Vincula o processo à área recebida via URL
+        responsibleId: dto.responsibleId || null,
+      },
+    });
   }
 
   findOne(id: string) {
@@ -114,17 +122,21 @@ export class ProcessesService {
 
   // --------- Criação de Processo ---------
 
+  // Criar um novo processo dentro de uma área
   async createProcess(areaId: string, createProcessDto: CreateProcessDto) {
     return this.prisma.process.create({
       data: {
         ...createProcessDto,
         areaId: areaId,  // Vincula o processo à área especificada
+
       },
     });
   }
-   async attachTool(processId: string, toolId: string, notes?: string | null) {
+  // --------- Vinculação de Ferramentas ---------
+
+  async attachTool(processId: string, dto: AttachToolDto) {
     const process = await this.prisma.process.findUnique({ where: { id: processId } });
-    const tool = await this.prisma.tool.findUnique({ where: { id: toolId } });
+    const tool = await this.prisma.tool.findUnique({ where: { id: dto.toolId } });
 
     if (!process) {
       throw new NotFoundException('Processo não encontrado');
@@ -135,7 +147,7 @@ export class ProcessesService {
     }
 
     return this.prisma.toolOnProcess.create({
-      data: { processId, toolId, notes: notes ?? null },
+      data: { processId, toolId: dto.toolId, notes: dto.notes ?? null },
     });
   }
 
@@ -153,7 +165,7 @@ export class ProcessesService {
     });
   }
 
-  // --------- Vínculos com Documentos ---------
+  // --------- Vinculação de Documentos Existentes ---------
 
   async attachExistingDocument(processId: string, documentId: string) {
     const process = await this.prisma.process.findUnique({ where: { id: processId } });
@@ -173,23 +185,26 @@ export class ProcessesService {
     });
   }
 
+
+
   // --------- Delete em cascata ---------
 
+  // Apaga o processo e todos os subprocessos vinculados a ele
   async deleteCascade(id: string) {
     return this.prisma.$transaction(async (tx) => {
-      // Deletar subprocessos primeiro (usando a tabela Subprocess)
       const children = await tx.subprocess.findMany({
         where: { processId: id }, // Filtra subprocessos com base no processId
         select: { id: true },
       });
 
       for (const child of children) {
-        await this.deleteCascade(child.id); // Chamada recursiva para deletar subprocessos
+        await this.deleteCascade(child.id);  // Chamada recursiva para deletar subprocessos
       }
 
       // Apaga o processo
       await tx.toolOnProcess.deleteMany({ where: { processId: id } });
       await tx.document.deleteMany({ where: { processId: id } });
+
       return tx.process.delete({ where: { id } });
     });
   }

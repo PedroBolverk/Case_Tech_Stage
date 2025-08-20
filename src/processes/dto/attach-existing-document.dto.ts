@@ -1,7 +1,7 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+// src/processes/dto/attach-existing-document.dto.ts
+import { IsString } from 'class-validator';
 
 export class AttachExistingDocumentDto {
   @IsString()
-  @IsNotEmpty()
-  documentId!: string;
+  documentId: string;  // Aqui estamos declarando que esperamos um documentId como string
 }

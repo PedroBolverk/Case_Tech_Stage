@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/commo
 import { ApiTags } from '@nestjs/swagger';
 import { AreasService } from './areas.service';
 import { CreateAreaDto } from './dto/create-area.dto';
+import { CreateProcessDto } from 'src/processes/dto/create-process.dto';
 
 @ApiTags('areas')
 @Controller('api/areas')
@@ -11,6 +12,15 @@ export class AreasController {
   @Get()
   list() {
     return this.service.findAll();
+  }
+
+   // Rota para criar processo dentro de uma área
+  @Post(':areaId/processes')
+  async createProcessInArea(
+    @Param('areaId') areaId: string,        // Captura o areaId da URL
+    @Body() createProcessDto: CreateProcessDto
+  ) {
+    return this.service.createProcess(areaId, createProcessDto);
   }
 
   @Get(':id')

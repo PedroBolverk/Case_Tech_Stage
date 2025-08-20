@@ -13,7 +13,7 @@ import { MoveDocumentDto } from './dto/move-document.dto';
 export class ProcessesController {
   constructor(private readonly service: ProcessesService) { }
 
-  // ----- CRUD -----
+  // ----- CRUD ----- 
 
   @Get()
   @ApiQuery({ name: 'areaId', required: false })
@@ -54,15 +54,11 @@ export class ProcessesController {
   // Criar Processo dentro de uma Área
   @Post(':areaId/processes')
   createProcess(
-    @Param('areaId') areaId: string,
+    @Param('areaId') areaId: string,  // Recebe areaId da URL
     @Body() createProcessDto: CreateProcessDto
   ) {
-    return this.service.createProcess(areaId, createProcessDto);
-  }
-
-  @Post()
-  create(@Body() dto: CreateProcessDto) {
-    return this.service.create(dto);
+    // Passando areaId junto com o DTO
+    return this.service.create(areaId, createProcessDto);
   }
 
   @Patch(':id')
@@ -81,17 +77,21 @@ export class ProcessesController {
   // ----- Vínculos: TOOLS -----
   @Post(':id/tools')
   attachTool(@Param('id') id: string, @Body() dto: AttachToolDto) {
-    return this.service.attachTool(id, dto.toolId, dto.notes ?? null);
+    return this.service.attachTool(id, dto);  // Passando 'dto' corretamente
   }
 
   @Delete(':id/tools/:toolId')
   detachTool(@Param('id') id: string, @Param('toolId') toolId: string) {
-    return this.service.detachTool(id, toolId);
+    return this.service.detachTool(id, toolId);  // Passando 'toolId' corretamente
   }
 
   // ----- Vínculos: DOCUMENTS EXISTENTES -----
   @Post(':id/documents')
-  attachExistingDocument(@Param('id') id: string, @Body() dto: AttachExistingDocumentDto) {
+  attachExistingDocument(
+    @Param('id') id: string,  // Recebe o processId da URL
+    @Body() dto: AttachExistingDocumentDto  // Recebe o DTO com o documentId
+  ) {
+    // Aqui estamos passando o id do processo e o documentId do DTO
     return this.service.attachExistingDocument(id, dto.documentId);
   }
 

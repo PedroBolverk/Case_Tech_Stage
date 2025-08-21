@@ -86,12 +86,29 @@ export class ProcessesService {
 
   // Retorna todos subprocessos
   async getAllSubprocesses() {
-    return this.prisma.subprocess.findMany({
-      include: {
-        process: { select: { title: true } },  // Inclui título do processo pai
-      },
-    });
+    try {
+      const subprocesses = await this.prisma.subprocess.findMany({
+        where: {
+          processId: {
+            not: '0'  // Certifique-se de que processId não seja '0' (como string)
+          },
+        },
+        include: {
+          process: {
+            select: { title: true },  // Inclui o título do processo associado
+          },
+        },
+      });
+
+      console.log('Subprocessos encontrados:', subprocesses);
+      return subprocesses;
+    } catch (error) {
+      console.error('Erro ao buscar subprocessos:', error);
+      throw new Error('Erro ao buscar subprocessos.');
+    }
+    
   }
+
 
   // Retorna subprocessos de um processo específico
   async getSubprocessesByProcessId(processId: string) {
@@ -192,20 +209,47 @@ export class ProcessesService {
   // Apaga o processo e todos os subprocessos vinculados a ele
   async deleteCascade(id: string) {
     return this.prisma.$transaction(async (tx) => {
+      // Encontra subprocessos relacionados ao processo
       const children = await tx.subprocess.findMany({
-        where: { processId: id }, // Filtra subprocessos com base no processId
+        where: { processId: id },
         select: { id: true },
       });
 
-      for (const child of children) {
-        await this.deleteCascade(child.id);  // Chamada recursiva para deletar subprocessos
+      console.log(`Excluindo subprocessos para o processo ${id}`);
+
+      // Se não houver subprocessos, apenas exclui o processo
+      if (children.length === 0) {
+        console.log(`Nenhum subprocesso encontrado para o processo ${id}`);
       }
 
-      // Apaga o processo
+      // Exclui subprocessos de forma recursiva
+      for (const child of children) {
+        try {
+          console.log(`Deletando subprocesso com ID: ${child.id}`);
+          // Chama recursivamente para deletar subprocessos
+          await this.deleteCascade(child.id);
+        } catch (error) {
+          console.error(`Erro ao excluir subprocesso ${child.id}`, error);
+        }
+      }
+
+      // Exclui todas as ferramentas associadas ao processo
       await tx.toolOnProcess.deleteMany({ where: { processId: id } });
+
+      // Exclui todos os documentos associados ao processo
       await tx.document.deleteMany({ where: { processId: id } });
 
-      return tx.process.delete({ where: { id } });
+      // Exclui o processo
+      try {
+        console.log(`Excluindo o processo com ID: ${id}`);
+        return await tx.process.delete({ where: { id } });
+      } catch (error) {
+        console.error(`Erro ao excluir processo ${id}:`, error);
+        throw new Error(`Erro ao excluir o processo ${id}`);
+      }
     });
   }
+
+
+
 }

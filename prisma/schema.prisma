@@ -51,8 +51,7 @@ model Process {
   responsible   Person?         @relation(fields: [responsibleId], references: [id])
   tools         ToolOnProcess[] // Ferramentas associadas ao processo
   documents     Document[]      // Documentos associados ao processo
-  subprocesses  Subprocess[]    // Subprocessos associados a esse processo
-  createdAt     DateTime        @default(now())
+  subprocesses  Subprocess[]    
   updatedAt     DateTime        @updatedAt
 }
 
@@ -79,7 +78,7 @@ model Subprocess {
   title       String
   status      ProcessStatus
   processId   String      // Chave estrangeira referindo o processo pai
-  process     Process     @relation(fields: [processId], references: [id])
+  process     Process     @relation(fields: [processId], references: [id], onDelete: Cascade)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 }

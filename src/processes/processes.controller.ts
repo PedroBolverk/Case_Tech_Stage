@@ -3,9 +3,9 @@ import { ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ProcessesService } from './processes.service';
 import { CreateProcessDto } from './dto/create-process.dto';
 import { UpdateProcessDto } from './dto/update-process.dto';
-import { CreateSubprocessDto } from './dto/create-subprocess.dto';  // Importar DTO de subprocesso
+import { CreateSubprocessDto } from './dto/create-subprocess.dto'; 
 import { AttachToolDto } from './dto/attach-tool.dto';
-import { AttachExistingDocumentDto } from './dto/attach-existing-document.dto';  // Importar DTO de documento
+import { AttachExistingDocumentDto } from './dto/attach-existing-document.dto';
 import { MoveDocumentDto } from './dto/move-document.dto';
 
 @ApiTags('processes')
@@ -40,8 +40,9 @@ export class ProcessesController {
   }
 
   // Rota para pegar todos os subprocessos
-  @Get('/subprocesses')
+  @Get('subprocesses')
   getAllSubprocesses() {
+    console.log('Requisitado subprocessos');  // Log para verificar se a rota foi chamada
     return this.service.getAllSubprocesses();
   }
 
@@ -73,6 +74,7 @@ export class ProcessesController {
       ? this.service.deleteCascade(id)
       : this.service.remove(id);
   }
+
 
   // ----- Vínculos: TOOLS -----
   @Post(':id/tools')

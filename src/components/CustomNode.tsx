@@ -1,14 +1,10 @@
-// components/CustomNode.tsx
-
 import React from 'react';
-import styles from '../styles/NewPage.module.css';  // Certifique-se de que o caminho do arquivo CSS está correto
-import { NodePropsWithType } from '../hooks/types/types';  // Importando o tipo genérico NodePropsWithType
+import styles from '../styles/NewPage.module.css'; 
+import { NodePropsWithType } from '../hooks/types/types'
 
-// Componente único para todos os tipos de nós
 const CustomNode = ({ data, type }: NodePropsWithType<'area' | 'process' | 'subprocess'>) => {
-  let nodeClass = styles.reactFlowNode;  // Classe base
+  let nodeClass = styles.reactFlowNode; 
 
-  // Adiciona uma classe específica dependendo do tipo de nó
   if (type === 'area') {
     nodeClass = `${nodeClass} ${styles.area}`;
   } else if (type === 'process') {

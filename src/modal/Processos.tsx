@@ -58,7 +58,6 @@ const Processos = () => {
                 }
             );
 
-            // Atualiza a lista de processos com o novo processo criado
             setProcessos([...processos, response.data]);
             setShowProcessModal(false);  
             setNewProcess({
@@ -86,7 +85,7 @@ const Processos = () => {
 
     return (
         <div className={styles.modal}>
-            <button onClick={() => setShowProcessModal(true)}>Cadastrar Processo</button>
+            <a onClick={() => setShowProcessModal(true)} className={styles.buttonCadastrarProcess}>Cadastrar Processo</a>
 
             <Modal show={showProcessModal} onHide={() => setShowProcessModal(false)}>
                 <Modal.Header closeButton>

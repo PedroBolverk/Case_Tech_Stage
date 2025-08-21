@@ -1,88 +1,123 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import Modal from 'react-modal';
-import styles from '../src/styles/Dashboard.module.css';
+import ReactFlow, { ReactFlowProvider, Background } from 'react-flow-renderer';
+import styles from '../src/styles/NewPage.module.css';
+import useBuildFlow from '../src/hooks/useBuildFlow';
+import ButtonDashBoard from '../src/components/ButtonDashBoard';
+import CreateArea from '../src/modal/CreateArea';
+
 
 interface Area {
   id: string;
   name: string;
   description: string;
-
 }
 
 interface Process {
   id: string;
   title: string;
+  description: string;
   status: string;
+  areaId: string;
+  subprocesses?: Subprocess[];
   importance: number;
-  subprocesses?: Subprocess[];  // Subprocessos podem ser undefined ou um array
-
 }
 
 interface Subprocess {
   id: string;
   title: string;
   status: string;
-  processId: string;  // Associa o subprocesso ao processo pai
+  processId: string;
 }
 
-const Dashboard = () => {
+const NewDashboard = () => {
   const [areas, setAreas] = useState<Area[]>([]);
   const [processos, setProcessos] = useState<Process[]>([]);
-  const [newArea, setNewArea] = useState({ name: '', description: '' });
   const [newProcess, setNewProcess] = useState({
     title: '',
     description: '',
     status: 'PLANNED',
     importance: 3,
-    areaId: '',  // Áreas precisam de áreaId para associar o processo à área
+    areaId: '',
     responsibleId: '',
 
   });
+  const [newArea, setNewArea] = useState({ name: '', description: '' });
   const [newSubprocess, setNewSubprocess] = useState({ title: '', status: 'PLANNED', processId: '' });
-  const [showForm, setShowForm] = useState(false);
-  const [showProcessModal, setShowProcessModal] = useState(false);  // Modal para novo processo
-  const [showModal, setShowModal] = useState(false);  // Modal para subprocessos
-  const [selectedAreaId, setSelectedAreaId] = useState<string>('');  // Adiciona o estado para armazenar o areaId
+  const { nodes, edges } = useBuildFlow(areas, processos);
+  const [showModal, setShowModal] = useState(false);
+  const [showProcessModal, setShowProcessModal] = useState(false);
+  const [showAreaModal, setShowAreaModal] = useState(false)
+  const [selectedAreaId, setSelectedAreaId] = useState<string>('');
+  const [subProcesses, setSubProcesses] = useState<Subprocess[]>([]);
 
-
-  // Funções de manipuladores
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewArea({ ...newArea, [name]: value });
-  };
-
-  const handleProcessInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewProcess({ ...newProcess, [name]: value });
-  };
-  const handleProcessSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setNewProcess({ ...newProcess, [name]: value });
-  };
   const handleSubprocessInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setNewSubprocess({
       ...newSubprocess,
-      [name]: value,  // Atualizando o estado com o valor alterado
+      [name]: value,
     });
   };
+  // Carregar Áreas e Processos
+  useEffect(() => {
+    axios.get('http://localhost:4000/api/areas')
+      .then((response) => setAreas(response.data))
+      .catch((error) => console.error('Erro ao carregar áreas', error));
 
-  // Função de submit para adicionar novas áreas
+    axios.get('http://localhost:4000/api/processes/subprocesses')
+      .then((response) => {
+        console.log("Resposta dos subprocessos:", response.data);  // Verifica se está recebendo um array de subprocessos
+        setSubProcesses(response.data);
+      })
+      .catch((error) => {
+        console.error('Erro ao carregar subprocessos:', error);
+      });
+
+    axios.get('http://localhost:4000/api/processes')
+      .then((response) => setProcessos(response.data))
+      .catch((error) => console.error('Erro ao carregar processos', error));
+  }, []);
+
+  // Função para adicionar novas áreas
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const response = await axios.post('http://localhost:4000/api/areas', newArea);
-      const areaWithId = response.data;
-      setAreas([...areas, areaWithId]);
-      setShowForm(false);
+      setAreas([...areas, response.data]);
       setNewArea({ name: '', description: '' });
-    } catch (error: unknown) {
+    } catch (error) {
       console.error('Erro ao adicionar área:', error);
     }
   };
 
-  // Função para adicionar um novo processo em uma área específica
+  const handleDeleteArea = async (areaId: string) => {
+    try {
+      await axios.delete(`http://localhost:4000/api/areas/${areaId}`);
+
+      setAreas(areas.filter((area) => area.id !== areaId));
+    } catch (error) {
+      console.error('Erro ao excluir área:', error);
+    }
+  };
+
+  const handleDeleteProcess = async (processId: string) => {
+    const confirmDelete = window.confirm('Tem certeza de que deseja excluir este processo e todos os subprocessos vinculados a ele? Esta ação não pode ser desfeita.');
+
+    if (confirmDelete) {
+      try {
+        console.log('Deletando processo com ID:', processId);
+
+        await axios.delete(`http://localhost:4000/api/processes/${processId}?cascade=true`);
+
+        setProcessos(processos.filter((process) => process.id !== processId));
+      } catch (error) {
+        console.error('Erro ao excluir processo:', error);
+
+      }
+    }
+  };
+
+
   const handleCreateProcess = async (areaId: string) => {
     try {
       console.log('Dados enviados para o backend:', {
@@ -90,7 +125,7 @@ const Dashboard = () => {
         description: newProcess.description,
         status: newProcess.status,
         importance: newProcess.importance,
-        responsibleId: newProcess.responsibleId || null,  // Envia como null se não houver responsável
+        responsibleId: newProcess.responsibleId || null,
       });
 
       const response = await axios.post(
@@ -100,40 +135,39 @@ const Dashboard = () => {
           description: newProcess.description,
           status: newProcess.status,
           importance: newProcess.importance,
-          responsibleId: newProcess.responsibleId || null,  // Envia como null se não houver responsável
+          responsibleId: newProcess.responsibleId || null,
         }
       );
 
       setProcessos([...processos, response.data]);
-      setShowProcessModal(false);  // Fecha o modal após criar o processo
+      setShowProcessModal(false);
       setNewProcess({
         title: '',
         description: '',
         status: 'PLANNED',
         importance: 3,
         areaId: '',
-        responsibleId: '',  // Reseta o responsibleId após criação
+        responsibleId: '',
       });
     } catch (error) {
       console.error('Erro ao criar processo:', error);
     }
   };
 
+  const handleProcessSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setNewProcess({ ...newProcess, [name]: value });
+  };
 
-
-
-
-
-  // Função para adicionar um subprocesso a um processo
   const handleCreateSubprocess = async () => {
     try {
-      // Verificando os dados antes de enviar
+
       console.log("Subprocess Data:", newSubprocess);
 
-      // Enviar a requisição para criar o subprocesso
+
       const response = await axios.post(
-        `http://localhost:4000/api/processes/${newSubprocess.processId}/subprocesses`,  // processId vai na URL
-        {  // Passando os dados corretos no corpo da requisição
+        `http://localhost:4000/api/processes/${newSubprocess.processId}/subprocesses`,
+        {
           title: newSubprocess.title,
           status: newSubprocess.status
         }
@@ -149,192 +183,315 @@ const Dashboard = () => {
       ));
 
       setNewSubprocess({ title: '', status: 'PLANNED', processId: '' });
-      setShowModal(false);  // Fechar o modal após salvar
+      setShowModal(false);
     } catch (error: unknown) {
       console.error('Erro ao criar subprocesso', error);
     }
   };
+  const handleProcessInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewProcess({ ...newProcess, [name]: value });
+  };
 
-  // Carregar Áreas e Processos
+  const buildFlow = () => {
+    let newNodes: any[] = [];
+    let newEdges: any[] = [];
+
+    areas.forEach((area, index) => {
+      newNodes.push({
+        id: `area-${area.id}`,
+        type: 'default',
+        data: { label: area.name },
+        position: { x: 300 * index, y: 50 },
+      });
+
+      processos.filter(p => p.areaId === area.id).forEach((process, pIndex) => {
+        newNodes.push({
+          id: `process-${process.id}`,
+          type: 'default',
+          data: { label: process.title },
+          position: { x: 300 * index, y: 150 + 100 * pIndex },
+        });
+
+        newEdges.push({
+          id: `edge-${area.id}-${process.id}`,
+          source: `area-${area.id}`,
+          target: `process-${process.id}`,
+          animated: true,
+        });
+
+        process.subprocesses?.forEach((sub, sIndex) => {
+          newNodes.push({
+            id: `subprocess-${sub.id}`,
+            type: 'default',
+            data: { label: sub.title },
+            position: { x: 300 * index, y: 250 + 100 * pIndex + 50 * sIndex },
+          });
+
+          newEdges.push({
+            id: `edge-${process.id}-${sub.id}`,
+            source: `process-${process.id}`,
+            target: `subprocess-${sub.id}`,
+            animated: true,
+          });
+        });
+      });
+    });
+
+
+  };
+
   useEffect(() => {
-    axios.get('http://localhost:4000/api/areas')
-      .then((response) => setAreas(response.data))
-      .catch((error) => console.error('Erro ao carregar áreas', error));
-
-    axios.get('http://localhost:4000/api/processes')
-      .then((response) => setProcessos(response.data))
-      .catch((error) => console.error('Erro ao carregar processos', error));
-  }, []);
+    buildFlow();
+  }, [areas, processos]);
 
   return (
     <div className={styles.dashboardContainer}>
-      <div className={styles.section}>
-        <h2>Áreas Cadastradas</h2>
-        <button onClick={() => setShowForm(true)} className={styles.button}>+</button>
-        {showForm && (
-          <div className={styles.formContainer}>
-            <h3>Adicionar Nova Área</h3>
-            <form onSubmit={handleSubmit}>
-              <div>
-                <label>Nome da Área:</label>
-                <input type="text" name="name" value={newArea.name} onChange={handleInputChange} required />
-              </div>
-              <div>
-                <label>Descrição:</label>
-                <input type="text" name="description" value={newArea.description} onChange={handleInputChange} required />
-              </div>
-              <button type="submit">Adicionar</button>
-              <button type="button" onClick={() => setShowForm(false)}>Cancelar</button>
-            </form>
-          </div>
-        )}
 
-        <table className={styles.table}>
+      <div className={styles.sidebar}>
+        <ul>
+          <li><ButtonDashBoard /></li>
+          <li onClick={() => setShowAreaModal(true)}
+            className={styles.buttonCadastrarProcess}>
+            <a
+
+
+            >
+              Adicionar Área
+            </a>
+          </li>
+          {/* <li><ProcessButton /></li>
+          <li>Subprocessos</li> */}
+        </ul>
+      </div>
+
+      <div className={styles.content}>
+        <CreateArea
+          showModal={showAreaModal}
+          setShowModal={setShowAreaModal}
+        />
+        {/* Fluxo de Processos */}
+        <div className={styles.reactFlowWrapper}>
+          <ReactFlowProvider>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              style={{ width: '100%', height: '500px' }}
+            >
+              <Background color="#000000ff" gap={16} />
+              <div className={styles.legendContainer}>
+
+                <ul className={styles.legendList}>
+                  <li>
+                    <span className={styles.legendTag} style={{ backgroundColor: '#4A90E2' }}></span>
+                    <span className={styles.legendLabel}>Importante</span>
+                  </li>
+                  <li>
+                    <span className={styles.legendTag} style={{ backgroundColor: '#7ED321' }}></span>
+                    <span className={styles.legendLabel}>Relevante</span>
+                  </li>
+                  <li>
+                    <span className={styles.legendTag} style={{ backgroundColor: '#F5A623' }}></span>
+                    <span className={styles.legendLabel}>Menos Relevante</span>
+                  </li>
+                </ul>
+              </div>
+            </ReactFlow>
+
+          </ReactFlowProvider>
+
+        </div>
+
+        {/* Tabela de Áreas */}
+        <div className={styles.tableContainer}>
+          <table className={`${styles.table}`}>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {areas.map(area => (
+                <tr key={area.id}>
+                  <td>{area.name}</td>
+                  <td>{area.description}</td>
+                  <td>
+                    <div className={styles.buttons}>
+                      <button className={styles.buttonAdd} onClick={() => {
+                        setSelectedAreaId(area.id);
+                        setShowProcessModal(true);
+                      }}>
+                        Adicionar Processo
+                      </button>
+                      <button className={styles.buttonExcluir} onClick={() => handleDeleteArea(area.id)}>Excluir</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Tabela de Processos */}
+          <table className={`${styles.table}`}>
+            <thead>
+              <tr>
+                <th>Processo</th>
+                <th>Status</th>
+                <th>Importância</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {processos.map(process => (
+                <tr key={process.id}>
+                  <td>{process.title}</td>
+                  <td>{process.status}</td>
+                  <td>{process.importance}</td>
+                  <td>
+                    <div className={styles.buttons}>
+                      <button className={styles.buttonAdd} onClick={() => {
+                        setNewSubprocess({ ...newSubprocess, processId: process.id });
+                        setShowModal(true);
+                      }}>Adicionar Subprocesso</button>
+                      <button className={styles.buttonExcluir} onClick={() => handleDeleteProcess(process.id)}>Excluir</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+
+        </div>
+{/*         
+        <table className={`${styles.table}`}>
           <thead>
             <tr>
-              <th>Nome da Área</th>
-              <th>Descrição</th>
+              <th>SubProcesso</th>
+              <th>Status</th>
+              <th>Ação</th>
             </tr>
           </thead>
           <tbody>
-            {areas.map((area) => (
-              <tr key={area.id}>
-                <td>{area.name}</td>
-                <td>{area.description}</td>
-                <td><button
-                  onClick={() => {
-                    setSelectedAreaId(area.id);  // Define o areaId selecionado
-                    setShowProcessModal(true);    // Abre o modal para adicionar o processo
-                  }}
-                >
-                  Adicionar Processo
-                </button>
+            {Array.isArray(subProcesses) && subProcesses.map(subprocess => (
+              <tr key={subprocess.id}>
+                <td>{subprocess.title}</td>
+                <td>{subprocess.status}</td>
+                <td>
+                  <div className={styles.buttons}>
+                   
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </table> */}
       </div>
 
-      {/* Modal para Adicionar Processo */}
-      {showProcessModal && (
-        <div className={styles.modal}>
-          <h2>Adicionar Novo Processo</h2>
-          <form onSubmit={(e) => { e.preventDefault(); handleCreateProcess(selectedAreaId); }}>
-            <div>
-              <label>Título do Processo:</label>
-              <input
-                type="text"
-                name="title"
-                value={newProcess.title}
-                onChange={handleProcessInputChange}
-                required
-              />
-            </div>
-            <div>
-              <label>Descrição do Processo:</label>
-              <input
-                type="text"
-                name="description"
-                value={newProcess.description}
-                onChange={handleProcessInputChange}
-                required
-              />
-            </div>
-            <div>
-              <label>Status do Processo:</label>
-              <select
-                name="status"
-                value={newProcess.status}
-                onChange={handleProcessSelectChange}
-              >
-                <option value="PLANNED">PLANNED</option>
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="BLOCKED">BLOCKED</option>
-                <option value="DONE">DONE</option>
-              </select>
-            </div>
-            <div>
-              <label>Importância:</label>
-              <input
-                type="number"
-                name="importance"
-                value={newProcess.importance}
-                onChange={handleProcessInputChange}
-                required
-              />
-            </div>
-            <button type="submit">Salvar</button>
-            <button type="button" onClick={() => setShowProcessModal(false)}>Cancelar</button>
-          </form>
-        </div>
-      )}
 
 
-      {/* Fluxograma de Processos */}
-      <div className={styles.section}>
-        <h2>Processos</h2>
-        <div>
-          {processos.map(process => (
-            <div key={process.id} className={styles.card}>
-              <h3>{process.title}</h3>
-              <p>{process.status}</p>
-              <button onClick={() => {
-                setNewSubprocess({ ...newSubprocess, processId: process.id });
-                setShowModal(true);
-              }}>Adicionar Subprocesso</button>
-              <div>
-                {process.subprocesses && process.subprocesses.length > 0 ? (
-                  process.subprocesses.map(sub => (
-                    <div key={sub.id}>
-                      <h4>{sub.title}</h4>
-                      <p>{sub.status}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p>Sem subprocessos</p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Modal para Adicionar Subprocesso */}
       {showModal && (
-        <div className={styles.modal}>
-          <h2>Adicionar Subprocesso</h2>
-          <form onSubmit={(e) => { e.preventDefault(); handleCreateSubprocess(); }}>
-            <div>
-              <label>Título do Subprocesso:</label>
-              <input
-                type="text"
-                name="title"
-                value={newSubprocess.title}
-                onChange={handleSubprocessInputChange}
-                required
-              />
-            </div>
-            <div>
-              <label>Status do Subprocesso:</label>
-              <select
-                name="status"
-                value={newSubprocess.status}
-                onChange={handleSubprocessInputChange}
-              >
-                <option value="PLANNED">PLANNED</option>
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="BLOCKED">BLOCKED</option>
-                <option value="DONE">DONE</option>
-              </select>
-            </div>
-            <button type="submit">Salvar</button>
-            <button type="button" onClick={() => setShowModal(false)}>Cancelar</button>
-          </form>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalDialog}>
+            <h2>Adicionar Subprocesso</h2>
+            <form onSubmit={(e) => { e.preventDefault(); handleCreateSubprocess(); }}>
+              <div>
+                <label>Título do Subprocesso:</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={newSubprocess.title}
+                  onChange={handleSubprocessInputChange}
+                  required
+                />
+              </div>
+              <div>
+                <label>Status do Subprocesso:</label>
+                <select
+                  name="status"
+                  value={newSubprocess.status}
+                  onChange={handleSubprocessInputChange}
+                >
+                  <option value="PLANNED">PLANNED</option>
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="BLOCKED">BLOCKED</option>
+                  <option value="DONE">DONE</option>
+                </select>
+              </div>
+              <div>
+                <button type="submit">Salvar</button>
+                <button type="button" onClick={() => setShowModal(false)}>Cancelar</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
+
+      {showProcessModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalDialog}>
+            <h2>Adicionar Processo</h2>
+            <form onSubmit={(e) => { e.preventDefault(); handleCreateProcess(selectedAreaId); }}>
+              <div>
+                <label>Título do Processo:</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={newProcess.title}
+                  onChange={handleProcessInputChange}
+                  required
+                />
+              </div>
+              <div>
+                <label>Descrição do Processo:</label>
+                <input
+                  type="text"
+                  name="description"
+                  value={newProcess.description}
+                  onChange={handleProcessInputChange}
+                  required
+                />
+              </div>
+              <div>
+                <label>Status do Processo:</label>
+                <select
+                  name="status"
+                  value={newProcess.status}
+                  onChange={handleProcessSelectChange}
+                >
+                  <option value="PLANNED">PLANNED</option>
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="BLOCKED">BLOCKED</option>
+                  <option value="DONE">DONE</option>
+                </select>
+              </div>
+              <div>
+                <label>Importância:</label>
+                <input
+                  type="number"
+                  name="importance"
+                  value={newProcess.importance}
+                  onChange={handleProcessInputChange}
+                  required
+                />
+              </div>
+              <div>
+                <button type="submit">Salvar</button>
+                <button type="button" onClick={() => setShowProcessModal(false)}>Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+
+
     </div>
   );
 };
 
-export default Dashboard;
+export default NewDashboard;

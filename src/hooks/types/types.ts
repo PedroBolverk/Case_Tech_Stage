@@ -1,5 +1,3 @@
-// types/types.ts
-
 export interface Area {
   id: string;
   name: string;
@@ -11,6 +9,7 @@ export interface Process {
   title: string;
   status: string;
   areaId: string;
+  importance: number;
   subprocesses?: Subprocess[];
 }
 
@@ -21,16 +20,13 @@ export interface Subprocess {
   processId: string;
 }
 
-// types/types.ts
-
 export interface NodeProps {
   data: {
     label: string;
   };
-  type: 'area' | 'process' | 'subprocess';  // Tipagem para os tipos de nó
+  type: 'area' | 'process' | 'subprocess';  
 }
 
-// NodeProps<any> é o tipo esperado pelo React Flow
 export interface NodePropsWithType<T> {
   data: {
     label: string;

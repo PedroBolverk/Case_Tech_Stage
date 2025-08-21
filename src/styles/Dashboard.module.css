@@ -23,8 +23,7 @@
 
 .button {
     padding: 8px 16px;
-    background-color: #28a745;
-    color: white;
+   
     border: none;
     border-radius: 4px;
     font-size: 16px;
@@ -32,15 +31,26 @@
     margin-bottom: 20px;
 }
 
-.button:hover {
-    background-color: #218838;
+.buttonCadastrarProcess{
+    cursor: pointer;
+    background-color: transparent;
+}
+
+.dashboardbutton{
+    cursor: pointer;
+    text-decoration-line: none;
+    text-decoration: none;
+    color: white;
+    margin: auto;
+    align-items: center;
+    text-align: center;
+    background-color: transparent;
 }
 
 
 @media (max-width: 768px) {
     .dashboardContainer {
         grid-template-columns: 1fr;
-        /* Para telas pequenas, ter apenas uma coluna */
     }
 }
 

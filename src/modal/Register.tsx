@@ -1,4 +1,3 @@
-// modal/RegisterModal.tsx
 import React, { useState } from 'react';
 import axios from 'axios';
 import styles from '../styles/Register.module.css'
@@ -17,7 +16,7 @@ const RegisterModal = ({ onClose }: { onClose: () => void }) => {
         email,
         password,
       });
-      onClose(); // Fecha a modal após o sucesso
+      onClose(); 
       alert('Cadastro realizado com sucesso!');
     } catch (err) {
       setError('Erro ao criar a conta!');

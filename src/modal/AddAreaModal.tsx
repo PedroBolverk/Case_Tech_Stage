@@ -1,4 +1,3 @@
-// components/modals/AddAreaModal.tsx
 import React, { useState } from 'react';
 
 const AddAreaModal = ({ onClose, onSave }: { onClose: () => void, onSave: (area: any) => void }) => {

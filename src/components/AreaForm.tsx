@@ -1,13 +1,12 @@
-// components/AreaForm.tsx
 import { useState } from 'react';
 import axios from 'axios';
-import { FormEvent } from 'react';  // Importando o tipo para o evento de formulário
+import { FormEvent } from 'react';
 
 const AreaForm = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {  // Tipando corretamente o evento 'e'
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => { 
     e.preventDefault();
     try {
       await axios.post('http://localhost:4000/api/areas', { name, description });

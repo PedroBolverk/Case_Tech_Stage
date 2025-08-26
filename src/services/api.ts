@@ -7,13 +7,13 @@ const api = axios.create({
   },
 });
 
-// Função para obter todos os Processos
-export const getProcesses = async () => {  // Renomeado para refletir corretamente a ação de buscar processos
+
+export const getProcesses = async () => {  
   try {
-    const response = await api.get('/processes');  // Endpoint correto para buscar processos
+    const response = await api.get('/processes');  
     return response.data;
   } catch (error) {
     console.error('Erro ao buscar Processos', error);
-    throw new Error('Erro ao buscar Processos');  // Melhorando a mensagem de erro
+    throw new Error('Erro ao buscar Processos');  
   }
 };

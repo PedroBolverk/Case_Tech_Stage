@@ -5,6 +5,8 @@ import styles from '../src/styles/NewPage.module.css';
 import useBuildFlow from '../src/hooks/useBuildFlow';
 import ButtonDashBoard from '../src/components/ButtonDashBoard';
 import CreateArea from '../src/modal/CreateArea';
+import withAuth from '../src/components/withAuth';
+import { GetServerSideProps } from 'next';
 
 
 interface Area {
@@ -493,5 +495,19 @@ const NewDashboard = () => {
     </div>
   );
 };
+// export const getServerSideProps: GetServerSideProps = async (context) => {
+//   const token = context.req.cookies['token']; // Aqui você pode pegar o token do cookie (caso tenha configurado no login)
+
+//   if (!token) {
+//     return {
+//       redirect: {
+//         destination: '/login', // Redireciona para o login caso o token não exista
+//         permanent: false,
+//       },
+//     };
+//   }
+
+//   return { props: {} };
+// };
 
 export default NewDashboard;

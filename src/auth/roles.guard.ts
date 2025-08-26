@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { CanActivate, ExecutionContext } from '@nestjs/common';
-import { Reflector } from '@nestjs/core'; // Para ler os metadados das rotas
+import { Reflector } from '@nestjs/core'; 
 import { Observable } from 'rxjs';
-import { Role } from '@prisma/client'; // Enum de papéis que você criou no Prisma
+import { Role } from '@prisma/client'; 
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -11,14 +11,14 @@ export class RolesGuard implements CanActivate {
   canActivate(
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
-    const requiredRoles = this.reflector.get<Role[]>('roles', context.getHandler()); // Obtém os papéis necessários da rota
+    const requiredRoles = this.reflector.get<Role[]>('roles', context.getHandler());
     if (!requiredRoles) {
-      return true; // Se não houver papéis definidos, permite acesso
+      return true; 
     }
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user; // Pega o usuário autenticado da requisição
+    const user = request.user; 
 
-    return requiredRoles.some((role) => role === user.role); // Verifica se o papel do usuário corresponde ao necessário
+    return requiredRoles.some((role) => role === user.role); 
   }
 }
